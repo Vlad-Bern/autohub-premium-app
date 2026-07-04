@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <title>AutoHub Premium</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23FFFFFF'><path d='M20 40h60v10H20zM30 60h40v10H30z'/></svg>"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+    </script>
+  </head>
+  <body>
+    <div class="app-frame">
+      <header class="app-header">
+        <div class="header-logo">
+          <span class="logo-main">AUTOHUB</span>
+          <span class="logo-sub">PREMIUM</span>
+        </div>
+        <div class="header-actions">
+          <button class="btn-reset" id="resetBtn">Сбросить</button>
+          <a
+            href="https://t.me/your_manager"
+            class="link-support"
+            target="_blank"
+            aria-label="Связаться с менеджером"
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+              ></path>
+            </svg>
+          </a>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <section class="country-section">
+          <div class="segmented-control">
+            <div class="slider-bg"></div>
+            <button class="control-tab active" data-country="china">
+              Китай <span class="country-code">CN</span>
+            </button>
+            <button class="control-tab" data-country="korea">
+              Корея <span class="country-code">KR</span>
+            </button>
+            <button class="control-tab" data-country="japan">
+              Япония <span class="country-code">JP</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="presets-section">
+          <h2 class="section-title">Рекомендуемые модели</h2>
+          <div class="presets-slider" id="presetsSlider">
+            <div class="preset-card" data-price="165000" data-volume="2000">
+              <div class="card-header">
+                <span class="card-badge">Бензин</span>
+                <span class="card-price">от 165k ¥</span>
+              </div>
+              <h3 class="card-name">Geely Monjaro</h3>
+              <p class="card-specs">2.0 л • 238 л.с. • Новый</p>
+            </div>
+
+            <div class="preset-card" data-price="315000" data-volume="1500">
+              <div class="card-header">
+                <span class="card-badge">Гибрид</span>
+                <span class="card-price">от 315k ¥</span>
+              </div>
+              <h3 class="card-name">LiXiang L7</h3>
+              <p class="card-specs">1.5 л • 449 л.с. • Новый</p>
+            </div>
+
+            <div class="preset-card" data-price="290000" data-volume="0">
+              <div class="card-header">
+                <span class="card-badge">Электро</span>
+                <span class="card-price">от 290k ¥</span>
+              </div>
+              <h3 class="card-name">Zeekr 001</h3>
+              <p class="card-specs">Батарея • 544 л.с. • Новый</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="inputs-section">
+          <div class="input-block">
+            <div class="block-header">
+              <label class="block-label" id="inputLabel"
+                >Цена в Китае (¥)</label
+              >
+              <span class="block-value" id="priceValue">165 000</span>
+            </div>
+            <div class="range-wrapper">
+              <input
+                type="range"
+                id="priceInput"
+                min="50000"
+                max="1000000"
+                step="5000"
+                value="165000"
+                class="custom-range"
+              />
+            </div>
+          </div>
+
+          <div class="input-block">
+            <div class="block-header">
+              <label class="block-label">Объем двигателя (куб. см)</label>
+              <span class="block-value" id="volumeValue">2 000</span>
+            </div>
+            <div class="range-wrapper">
+              <input
+                type="range"
+                id="volumeInput"
+                min="0"
+                max="6000"
+                step="100"
+                value="2000"
+                class="custom-range"
+              />
+            </div>
+          </div>
+
+          <div class="input-block">
+            <div class="block-header">
+              <label class="block-label">Возраст автомобиля</label>
+            </div>
+            <div class="age-toggle-group">
+              <div class="age-slider-bg"></div>
+              <button class="age-btn active" data-age="1">
+                До 3 лет (Новая)
+              </button>
+              <button class="age-btn" data-age="4">3 – 5 лет</button>
+              <button class="age-btn" data-age="6">Старше 5 лет</button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <div class="footer-summary">
+          <div class="price-box">
+            <span class="summary-label">Итого под ключ</span>
+            <span class="summary-value" id="totalPriceDisplay">0 ₽</span>
+          </div>
+          <div class="rate-box">
+            <span class="summary-label">Курс ЦБ</span>
+            <span class="rate-value" id="rateDisplay">¥1 = 13.42 ₽</span>
+          </div>
+        </div>
+
+        <button class="btn-main-cta" id="submitOrderBtn">
+          <span>Заказать этот автомобиль</span>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+
+        <p class="footer-legal">
+          *Расчет является предварительным. Стоимость логистики и пошлин
+          актуальна на текущую дату.
+        </p>
+      </footer>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

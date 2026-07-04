@@ -1,0 +1,327 @@
+const CONFIG = {
+  logistics: 250000,
+  margin: 75000,
+  defaults: {
+    price: 165000,
+    volume: 2000,
+  },
+};
+
+const CURRENCY_DATA = [
+  {
+    name: "china",
+    rate: 13.42,
+    symbol: "¥",
+    label: "Цена в Китае (¥)",
+    min: 50000,
+    max: 1000000,
+    step: 5000,
+    defaultPrice: 165000,
+  },
+  {
+    name: "korea",
+    rate: 0.068,
+    symbol: "₩",
+    label: "Цена в Корее (₩)",
+    min: 10000000,
+    max: 150000000,
+    step: 500000,
+    defaultPrice: 35000000,
+  },
+  {
+    name: "japan",
+    rate: 0.62,
+    symbol: "¥",
+    label: "Цена в Японии (¥)",
+    min: 1000000,
+    max: 15000000,
+    step: 50000,
+    defaultPrice: 3800000,
+  },
+];
+
+const countryTabs = document.querySelectorAll(".control-tab");
+const carCards = document.querySelectorAll(".preset-card");
+const priceInput = document.getElementById("priceInput");
+const priceValue = document.getElementById("priceValue");
+const volumeInput = document.getElementById("volumeInput");
+const volumeValue = document.getElementById("volumeValue");
+const ageButtons = document.querySelectorAll(".age-btn");
+const resetBtn = document.getElementById("resetBtn");
+const totalPriceDisplay = document.getElementById("totalPriceDisplay");
+const presetsSlider = document.getElementById("presetsSlider");
+const segmentedControl = document.querySelector(".segmented-control");
+const sliderBg = document.querySelector(".slider-bg");
+const ageToggleGroup = document.querySelector(".age-toggle-group");
+const ageSliderBg = document.querySelector(".age-slider-bg");
+const inputLabel = document.getElementById("inputLabel");
+const rateDisplay = document.getElementById("rateDisplay");
+
+let isDown = false;
+let startX;
+let scrollLeft;
+
+let isDraggingTab = false;
+let startTabX = 0;
+let startTransformX = 0;
+let hasMovedTab = false;
+
+let isDraggingAge = false;
+let startAgeX = 0;
+let startAgeTransformX = 0;
+let hasMovedAge = false;
+
+function calculateTotalCost() {
+  const activeTab = document.querySelector(".control-tab.active");
+  const tabsArray = Array.from(countryTabs);
+  const countryIndex = Math.max(0, tabsArray.indexOf(activeTab));
+  const currentCountry = CURRENCY_DATA[countryIndex];
+
+  rateDisplay.textContent = `${currentCountry.symbol}1 = ${currentCountry.rate} ₽`;
+  inputLabel.textContent = currentCountry.label;
+
+  const priceLocal = Number(priceInput.value);
+  const volume = Number(volumeInput.value);
+  const activeAgeBtn = document.querySelector(".age-btn.active");
+  const age = Number(activeAgeBtn.dataset.age);
+
+  const autoPriceRUB = priceLocal * currentCountry.rate;
+  let customsDuty = 0;
+
+  if (volume === 0) {
+    customsDuty = autoPriceRUB * 0.2;
+  } else {
+    if (age < 3) {
+      customsDuty = autoPriceRUB * 0.48;
+    } else if (age >= 3 && age <= 5) {
+      const euroPerCc = volume <= 1500 ? 1.7 : volume <= 1800 ? 2.5 : 2.7;
+      customsDuty = volume * euroPerCc * CONFIG.eurRate;
+    } else {
+      const euroPerCc = volume <= 1500 ? 3.2 : volume <= 1800 ? 3.5 : 4.8;
+      customsDuty = volume * euroPerCc * CONFIG.eurRate;
+    }
+  }
+
+  let utilSbor = 0;
+  if (volume === 0) {
+    utilSbor = age < 3 ? 32600 : 122000;
+  } else if (volume <= 2000) {
+    utilSbor = age < 3 ? 306000 : 528000;
+  } else if (volume <= 3000) {
+    utilSbor = age < 3 ? 844000 : 1279000;
+  } else {
+    utilSbor = age < 3 ? 1235000 : 1620000;
+  }
+
+  const totalFinalPrice =
+    autoPriceRUB + customsDuty + utilSbor + CONFIG.logistics + CONFIG.margin;
+  totalPriceDisplay.textContent =
+    Math.round(totalFinalPrice).toLocaleString("ru-RU") + " ₽";
+}
+
+function updateTabActive(index) {
+  countryTabs.forEach((t, idx) => {
+    t.classList.toggle("active", idx === index);
+  });
+  const rect = segmentedControl.getBoundingClientRect();
+  const tabWidth = (rect.width - 6) / 3;
+  const finalX = index * tabWidth;
+  sliderBg.style.transform = `translateX(${finalX}px)`;
+
+  const data = CURRENCY_DATA[index];
+  priceInput.min = data.min;
+  priceInput.max = data.max;
+  priceInput.step = data.step;
+  priceInput.value = data.defaultPrice;
+  priceValue.textContent = data.defaultPrice.toLocaleString("ru-RU");
+
+  calculateTotalCost();
+}
+
+function updateAgeActive(index) {
+  ageButtons.forEach((b, idx) => {
+    b.classList.toggle("active", idx === index);
+  });
+  const rect = ageToggleGroup.getBoundingClientRect();
+  const tabWidth = (rect.width - 8) / 3;
+  const finalX = index * tabWidth;
+  ageSliderBg.style.transform = `translateX(${finalX}px)`;
+  calculateTotalCost();
+}
+
+function handleTabSwipe(clientX) {
+  const rect = segmentedControl.getBoundingClientRect();
+  const deltaX = clientX - startTabX;
+  if (Math.abs(deltaX) > 2) hasMovedTab = true;
+  if (hasMovedTab) {
+    let currentX = startTransformX + deltaX;
+    const tabWidth = (rect.width - 6) / 3;
+    const maxLeft = rect.width - tabWidth - 6;
+    currentX = Math.max(0, Math.min(maxLeft, currentX));
+    sliderBg.style.transform = `translateX(${currentX}px)`;
+  }
+}
+
+function handleAgeSwipe(clientX) {
+  const rect = ageToggleGroup.getBoundingClientRect();
+  const deltaX = clientX - startAgeX;
+  if (Math.abs(deltaX) > 2) hasMovedAge = true;
+  if (hasMovedAge) {
+    let currentX = startAgeTransformX + deltaX;
+    const tabWidth = (rect.width - 8) / 3;
+    const maxLeft = rect.width - tabWidth - 8;
+    currentX = Math.max(0, Math.min(maxLeft, currentX));
+    ageSliderBg.style.transform = `translateX(${currentX}px)`;
+  }
+}
+
+priceInput.addEventListener("input", (e) => {
+  priceValue.textContent = Number(e.target.value).toLocaleString("ru-RU");
+  calculateTotalCost();
+});
+
+volumeInput.addEventListener("input", (e) => {
+  volumeValue.textContent =
+    e.target.value == 0
+      ? "Электро / Гибрид"
+      : Number(e.target.value).toLocaleString("ru-RU");
+  calculateTotalCost();
+});
+
+segmentedControl.addEventListener(
+  "touchstart",
+  (e) => {
+    e.preventDefault();
+  },
+  { passive: false },
+);
+ageToggleGroup.addEventListener(
+  "touchstart",
+  (e) => {
+    e.preventDefault();
+  },
+  { passive: false },
+);
+
+segmentedControl.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 && e.pointerType === "mouse") return;
+  isDraggingTab = true;
+  hasMovedTab = false;
+  startTabX = e.clientX;
+  const style = window.getComputedStyle(sliderBg);
+  const matrix = new DOMMatrix(style.transform);
+  startTransformX = matrix.m41;
+  sliderBg.style.transition = "none";
+});
+
+ageToggleGroup.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 && e.pointerType === "mouse") return;
+  isDraggingAge = true;
+  hasMovedAge = false;
+  startAgeX = e.clientX;
+  const style = window.getComputedStyle(ageSliderBg);
+  const matrix = new DOMMatrix(style.transform);
+  startAgeTransformX = matrix.m41;
+  ageSliderBg.style.transition = "none";
+});
+
+window.addEventListener("pointermove", (e) => {
+  if (isDraggingTab) handleTabSwipe(e.clientX);
+  if (isDraggingAge) handleAgeSwipe(e.clientX);
+});
+
+window.addEventListener("pointerup", (e) => {
+  if (isDraggingTab) {
+    isDraggingTab = false;
+    sliderBg.style.transition = "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)";
+    const rect = segmentedControl.getBoundingClientRect();
+    const tabWidth = (rect.width - 6) / 3;
+    const style = window.getComputedStyle(sliderBg);
+    const matrix = new DOMMatrix(style.transform);
+    let targetIndex = hasMovedTab
+      ? Math.round(matrix.m41 / tabWidth)
+      : Math.floor((startTabX - rect.left) / (rect.width / 3));
+    updateTabActive(Math.max(0, Math.min(2, targetIndex)));
+  }
+
+  if (isDraggingAge) {
+    isDraggingAge = false;
+    ageSliderBg.style.transition =
+      "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)";
+    const rect = ageToggleGroup.getBoundingClientRect();
+    const tabWidth = (rect.width - 8) / 3;
+    const style = window.getComputedStyle(ageSliderBg);
+    const matrix = new DOMMatrix(style.transform);
+    let targetIndex = hasMovedAge
+      ? Math.round(matrix.m41 / tabWidth)
+      : Math.floor((startAgeX - rect.left) / (rect.width / 3));
+    updateAgeActive(Math.max(0, Math.min(2, targetIndex)));
+  }
+});
+
+carCards.forEach((card) => {
+  card.addEventListener("click", () => {
+    updateTabActive(0);
+    const price = Number(card.dataset.price);
+    const volume = Number(card.dataset.volume);
+    priceInput.value = price;
+    volumeInput.value = volume;
+    priceValue.textContent = price.toLocaleString("ru-RU");
+    volumeValue.textContent =
+      volume === 0 ? "Электро / Гибрид" : volume.toLocaleString("ru-RU");
+    updateAgeActive(0);
+  });
+});
+
+resetBtn.addEventListener("click", () => {
+  updateTabActive(0);
+  updateAgeActive(0);
+  priceInput.value = CONFIG.defaults.price;
+  volumeInput.value = CONFIG.defaults.volume;
+  priceValue.textContent = CONFIG.defaults.price.toLocaleString("ru-RU");
+  volumeValue.textContent = CONFIG.defaults.volume.toLocaleString("ru-RU");
+});
+
+presetsSlider.addEventListener("mousedown", (e) => {
+  isDown = true;
+  presetsSlider.style.cursor = "grabbing";
+  startX = e.pageX - presetsSlider.offsetLeft;
+  scrollLeft = presetsSlider.scrollLeft;
+  e.preventDefault();
+});
+
+presetsSlider.addEventListener("mouseleave", () => {
+  isDown = false;
+  presetsSlider.style.cursor = "grab";
+});
+presetsSlider.addEventListener("mouseup", () => {
+  isDown = false;
+  presetsSlider.style.cursor = "grab";
+});
+
+presetsSlider.addEventListener("mousemove", (e) => {
+  if (!isDown) return;
+  e.preventDefault();
+  const x = e.pageX - presetsSlider.offsetLeft;
+  presetsSlider.scrollLeft = scrollLeft - (x - startX) * 1.5;
+});
+
+presetsSlider.addEventListener("wheel", (e) => {
+  if (e.deltaY !== 0) {
+    e.preventDefault();
+    presetsSlider.scrollLeft += e.deltaY * 1.2;
+  }
+});
+
+window.addEventListener("DOMContentLoaded", () => {
+  presetsSlider.style.cursor = "grab";
+  updateTabActive(0);
+  updateAgeActive(0);
+});
+
+window.addEventListener("resize", () => {
+  const activeTab = document.querySelector(".control-tab.active");
+  if (activeTab) updateTabActive(Array.from(countryTabs).indexOf(activeTab));
+  const activeAge = document.querySelector(".age-btn.active");
+  if (activeAge) updateAgeActive(Array.from(ageButtons).indexOf(activeAge));
+});
