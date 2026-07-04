@@ -1,17 +1,26 @@
-const CONFIG = {
+const BUSINESS_CONFIG = {
   logistics: 250000,
-  margin: 75000,
-  eurRate: 96.5,
+  margin: 150000,
+  defaultRates: {
+    CNY: 13.42,
+    KRW: 0.068,
+    JPY: 0.62,
+    EUR: 96.5,
+  },
   defaults: {
     price: 165000,
     volume: 2000,
   },
 };
 
+let currentRates = { ...BUSINESS_CONFIG.defaultRates };
+
 const CURRENCY_DATA = [
   {
     name: "china",
-    rate: 13.42,
+    get rate() {
+      return currentRates.CNY;
+    },
     symbol: "¥",
     label: "Цена в Китае (¥)",
     min: 50000,
@@ -21,7 +30,9 @@ const CURRENCY_DATA = [
   },
   {
     name: "korea",
-    rate: 0.068,
+    get rate() {
+      return currentRates.KRW;
+    },
     symbol: "₩",
     label: "Цена в Корее (₩)",
     min: 10000000,
@@ -31,7 +42,9 @@ const CURRENCY_DATA = [
   },
   {
     name: "japan",
-    rate: 0.62,
+    get rate() {
+      return currentRates.JPY;
+    },
     symbol: "¥",
     label: "Цена в Японии (¥)",
     min: 1000000,
@@ -75,13 +88,31 @@ let hasMovedAge = false;
 
 let selectedCarName = "Индивидуальный подбор (по параметрам)";
 
+async function fetchActualExchangeRates() {
+  try {
+    const response = await fetch("https://www.cbr-xml-daily.ru/daily_json.js");
+    if (!response.ok) throw new Error();
+    const data = await response.json();
+    if (data && data.Valute) {
+      currentRates.CNY = data.Valute.CNY.Value;
+      currentRates.EUR = data.Valute.EUR.Value;
+      currentRates.KRW = data.Valute.KRW.Value / data.Valute.KRW.Nominal;
+      currentRates.JPY = data.Valute.JPY.Value / data.Valute.JPY.Nominal;
+    }
+  } catch (error) {
+  } finally {
+    updateTabActive(0);
+    updateAgeActive(0);
+  }
+}
+
 function calculateTotalCost() {
   const activeTab = document.querySelector(".control-tab.active");
   const tabsArray = Array.from(countryTabs);
   const countryIndex = Math.max(0, tabsArray.indexOf(activeTab));
   const currentCountry = CURRENCY_DATA[countryIndex];
 
-  rateDisplay.textContent = `${currentCountry.symbol}1 = ${currentCountry.rate} ₽`;
+  rateDisplay.textContent = `${currentCountry.symbol}1 = ${Number(currentCountry.rate)} ₽`;
   inputLabel.textContent = currentCountry.label;
 
   const priceLocal = Number(priceInput.value);
@@ -105,7 +136,7 @@ function calculateTotalCost() {
       else if (volume > 2300 && volume <= 3000) euroPerCc = 3.0;
       else if (volume > 3000) euroPerCc = 3.6;
 
-      customsDuty = volume * euroPerCc * CONFIG.eurRate;
+      customsDuty = volume * euroPerCc * currentRates.EUR;
     } else {
       let euroPerCc = 3.0;
       if (volume > 1000 && volume <= 1500) euroPerCc = 3.2;
@@ -114,7 +145,7 @@ function calculateTotalCost() {
       else if (volume > 2300 && volume <= 3000) euroPerCc = 5.0;
       else if (volume > 3000) euroPerCc = 5.7;
 
-      customsDuty = volume * euroPerCc * CONFIG.eurRate;
+      customsDuty = volume * euroPerCc * currentRates.EUR;
     }
   }
 
@@ -130,7 +161,11 @@ function calculateTotalCost() {
   }
 
   const totalFinalPrice =
-    autoPriceRUB + customsDuty + utilSbor + CONFIG.logistics + CONFIG.margin;
+    autoPriceRUB +
+    customsDuty +
+    utilSbor +
+    BUSINESS_CONFIG.logistics +
+    BUSINESS_CONFIG.margin;
   totalPriceDisplay.textContent =
     Math.round(totalFinalPrice).toLocaleString("ru-RU") + " ₽";
 }
@@ -281,7 +316,10 @@ window.addEventListener("pointerup", (e) => {
 
 carCards.forEach((card) => {
   card.addEventListener("click", () => {
-    updateTabActive(0);
+    const countryIdx = card.dataset.countryIndex
+      ? Number(card.dataset.countryIndex)
+      : 0;
+    updateTabActive(countryIdx);
     const price = Number(card.dataset.price);
     const volume = Number(card.dataset.volume);
     priceInput.value = price;
@@ -302,10 +340,12 @@ carCards.forEach((card) => {
 resetBtn.addEventListener("click", () => {
   updateTabActive(0);
   updateAgeActive(0);
-  priceInput.value = CONFIG.defaults.price;
-  volumeInput.value = CONFIG.defaults.volume;
-  priceValue.textContent = CONFIG.defaults.price.toLocaleString("ru-RU");
-  volumeValue.textContent = CONFIG.defaults.volume.toLocaleString("ru-RU");
+  priceInput.value = BUSINESS_CONFIG.defaults.price;
+  volumeInput.value = BUSINESS_CONFIG.defaults.volume;
+  priceValue.textContent =
+    BUSINESS_CONFIG.defaults.price.toLocaleString("ru-RU");
+  volumeValue.textContent =
+    BUSINESS_CONFIG.defaults.volume.toLocaleString("ru-RU");
   selectedCarName = "Индивидуальный подбор (по параметрам)";
 });
 
@@ -404,8 +444,7 @@ submitOrderBtn.addEventListener("click", () => {
 
 window.addEventListener("DOMContentLoaded", () => {
   presetsSlider.style.cursor = "grab";
-  updateTabActive(0);
-  updateAgeActive(0);
+  fetchActualExchangeRates();
 });
 
 window.addEventListener("resize", () => {
