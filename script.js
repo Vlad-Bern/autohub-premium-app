@@ -1,6 +1,7 @@
 const CONFIG = {
   logistics: 250000,
   margin: 75000,
+  eurRate: 96.5,
   defaults: {
     price: 165000,
     volume: 2000,
@@ -56,6 +57,7 @@ const ageToggleGroup = document.querySelector(".age-toggle-group");
 const ageSliderBg = document.querySelector(".age-slider-bg");
 const inputLabel = document.getElementById("inputLabel");
 const rateDisplay = document.getElementById("rateDisplay");
+const submitOrderBtn = document.getElementById("submitOrderBtn");
 
 let isDown = false;
 let startX;
@@ -70,6 +72,8 @@ let isDraggingAge = false;
 let startAgeX = 0;
 let startAgeTransformX = 0;
 let hasMovedAge = false;
+
+let selectedCarName = "Индивидуальный подбор (по параметрам)";
 
 function calculateTotalCost() {
   const activeTab = document.querySelector(".control-tab.active");
@@ -94,10 +98,22 @@ function calculateTotalCost() {
     if (age < 3) {
       customsDuty = autoPriceRUB * 0.48;
     } else if (age >= 3 && age <= 5) {
-      const euroPerCc = volume <= 1500 ? 1.7 : volume <= 1800 ? 2.5 : 2.7;
+      let euroPerCc = 1.5;
+      if (volume > 1000 && volume <= 1500) euroPerCc = 1.7;
+      else if (volume > 1500 && volume <= 1800) euroPerCc = 2.5;
+      else if (volume > 1800 && volume <= 2300) euroPerCc = 2.7;
+      else if (volume > 2300 && volume <= 3000) euroPerCc = 3.0;
+      else if (volume > 3000) euroPerCc = 3.6;
+
       customsDuty = volume * euroPerCc * CONFIG.eurRate;
     } else {
-      const euroPerCc = volume <= 1500 ? 3.2 : volume <= 1800 ? 3.5 : 4.8;
+      let euroPerCc = 3.0;
+      if (volume > 1000 && volume <= 1500) euroPerCc = 3.2;
+      else if (volume > 1500 && volume <= 1800) euroPerCc = 3.5;
+      else if (volume > 1800 && volume <= 2300) euroPerCc = 4.8;
+      else if (volume > 2300 && volume <= 3000) euroPerCc = 5.0;
+      else if (volume > 3000) euroPerCc = 5.7;
+
       customsDuty = volume * euroPerCc * CONFIG.eurRate;
     }
   }
@@ -177,6 +193,7 @@ function handleAgeSwipe(clientX) {
 
 priceInput.addEventListener("input", (e) => {
   priceValue.textContent = Number(e.target.value).toLocaleString("ru-RU");
+  selectedCarName = "Индивидуальный подбор (по параметрам)";
   calculateTotalCost();
 });
 
@@ -185,6 +202,7 @@ volumeInput.addEventListener("input", (e) => {
     e.target.value == 0
       ? "Электро / Гибрид"
       : Number(e.target.value).toLocaleString("ru-RU");
+  selectedCarName = "Индивидуальный подбор (по параметрам)";
   calculateTotalCost();
 });
 
@@ -241,6 +259,7 @@ window.addEventListener("pointerup", (e) => {
     let targetIndex = hasMovedTab
       ? Math.round(matrix.m41 / tabWidth)
       : Math.floor((startTabX - rect.left) / (rect.width / 3));
+    selectedCarName = "Индивидуальный подбор (по параметрам)";
     updateTabActive(Math.max(0, Math.min(2, targetIndex)));
   }
 
@@ -255,6 +274,7 @@ window.addEventListener("pointerup", (e) => {
     let targetIndex = hasMovedAge
       ? Math.round(matrix.m41 / tabWidth)
       : Math.floor((startAgeX - rect.left) / (rect.width / 3));
+    selectedCarName = "Индивидуальный подбор (по параметрам)";
     updateAgeActive(Math.max(0, Math.min(2, targetIndex)));
   }
 });
@@ -269,6 +289,12 @@ carCards.forEach((card) => {
     priceValue.textContent = price.toLocaleString("ru-RU");
     volumeValue.textContent =
       volume === 0 ? "Электро / Гибрид" : volume.toLocaleString("ru-RU");
+
+    const nameElement = card.querySelector(".card-name");
+    if (nameElement) {
+      selectedCarName = nameElement.textContent;
+    }
+
     updateAgeActive(0);
   });
 });
@@ -280,6 +306,7 @@ resetBtn.addEventListener("click", () => {
   volumeInput.value = CONFIG.defaults.volume;
   priceValue.textContent = CONFIG.defaults.price.toLocaleString("ru-RU");
   volumeValue.textContent = CONFIG.defaults.volume.toLocaleString("ru-RU");
+  selectedCarName = "Индивидуальный подбор (по параметрам)";
 });
 
 presetsSlider.addEventListener("mousedown", (e) => {
@@ -313,20 +340,6 @@ presetsSlider.addEventListener("wheel", (e) => {
   }
 });
 
-window.addEventListener("DOMContentLoaded", () => {
-  presetsSlider.style.cursor = "grab";
-  updateTabActive(0);
-  updateAgeActive(0);
-});
-
-window.addEventListener("resize", () => {
-  const activeTab = document.querySelector(".control-tab.active");
-  if (activeTab) updateTabActive(Array.from(countryTabs).indexOf(activeTab));
-  const activeAge = document.querySelector(".age-btn.active");
-  if (activeAge) updateAgeActive(Array.from(ageButtons).indexOf(activeAge));
-});
-
-// Обработка клика на главную кнопку заказа автомобиля
 submitOrderBtn.addEventListener("click", () => {
   const activeTab = document.querySelector(".control-tab.active");
   const tabsArray = Array.from(countryTabs);
@@ -339,7 +352,6 @@ submitOrderBtn.addEventListener("click", () => {
   const ageText = activeAgeBtn ? activeAgeBtn.textContent : "";
   const totalPrice = totalPriceDisplay.textContent;
 
-  // Превращаем технические названия стран в читаемый вид
   const countryNameRu =
     currentCountry.name === "china"
       ? "Китай"
@@ -351,34 +363,54 @@ submitOrderBtn.addEventListener("click", () => {
       ? "Электро / Гибрид"
       : `${volume.toLocaleString("ru-RU")} куб. см`;
 
-  // Вызываем нативное всплывающее окно Telegram
-  window.Telegram.WebApp.showPopup(
-    {
-      title: "Проверка спецификации",
-      message:
-        `Вы собираетесь отправить заявку на расчет автомобиля со следующими параметрами:\n\n` +
-        `📍 Страна: ${countryNameRu}\n` +
-        `💰 Цена: ${priceLocal.toLocaleString("ru-RU")} ${currentCountry.symbol}\n` +
-        `🔌 Двигатель: ${volumeText}\n` +
-        `📅 Возраст: ${ageText}\n\n` +
-        `💵 Расчетная стоимость: ${totalPrice}\n\n` +
-        `Всё верно?`,
-      buttons: [
-        { id: "submit", type: "default", text: "Да, отправить заявку" },
-        { id: "cancel", type: "cancel", text: "Отмена" },
-      ],
-    },
-    (buttonId) => {
-      // Если пользователь нажал кнопку подтверждения
-      if (buttonId === "submit") {
-        window.Telegram.WebApp.showAlert(
-          "Заявка успешно сформирована! Менеджер свяжется с вами для уточнения деталей поставки.",
-          () => {
-            // Закрываем Mini App после успешной отправки, возвращая пользователя в чат
-            window.Telegram.WebApp.close();
-          },
-        );
-      }
-    },
-  );
+  try {
+    window.Telegram.WebApp.showPopup(
+      {
+        title: "Проверка спецификации",
+        message:
+          `Вы отправляете заявку на расчет стоимости:\n\n` +
+          `🚗 Модель: ${selectedCarName}\n` +
+          `📍 Страна: ${countryNameRu}\n` +
+          `💰 Цена: ${priceLocal.toLocaleString("ru-RU")} ${currentCountry.symbol}\n` +
+          `🔌 Двигатель: ${volumeText}\n` +
+          `📅 Возраст: ${ageText}\n\n` +
+          `💵 Итоговая стоимость: ${totalPrice}\n\n` +
+          `Всё верно?`,
+        buttons: [
+          { id: "submit", type: "default", text: "Да, отправить заявку" },
+          { id: "cancel", type: "cancel", text: "Отмена" },
+        ],
+      },
+      (buttonId) => {
+        if (buttonId === "submit") {
+          window.Telegram.WebApp.showAlert(
+            "Заявка успешно сформирована! Менеджер свяжется с вами для уточнения деталей.",
+            () => {
+              window.Telegram.WebApp.close();
+            },
+          );
+        }
+      },
+    );
+  } catch (e) {
+    alert(
+      "Заявка сформирована (Вне Telegram): " +
+        selectedCarName +
+        " - " +
+        totalPrice,
+    );
+  }
+});
+
+window.addEventListener("DOMContentLoaded", () => {
+  presetsSlider.style.cursor = "grab";
+  updateTabActive(0);
+  updateAgeActive(0);
+});
+
+window.addEventListener("resize", () => {
+  const activeTab = document.querySelector(".control-tab.active");
+  if (activeTab) updateTabActive(Array.from(countryTabs).indexOf(activeTab));
+  const activeAge = document.querySelector(".age-btn.active");
+  if (activeAge) updateAgeActive(Array.from(ageButtons).indexOf(activeAge));
 });
