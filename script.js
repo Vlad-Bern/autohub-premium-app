@@ -325,3 +325,60 @@ window.addEventListener("resize", () => {
   const activeAge = document.querySelector(".age-btn.active");
   if (activeAge) updateAgeActive(Array.from(ageButtons).indexOf(activeAge));
 });
+
+// Обработка клика на главную кнопку заказа автомобиля
+submitOrderBtn.addEventListener("click", () => {
+  const activeTab = document.querySelector(".control-tab.active");
+  const tabsArray = Array.from(countryTabs);
+  const countryIndex = Math.max(0, tabsArray.indexOf(activeTab));
+  const currentCountry = CURRENCY_DATA[countryIndex];
+
+  const priceLocal = Number(priceInput.value);
+  const volume = Number(volumeInput.value);
+  const activeAgeBtn = document.querySelector(".age-btn.active");
+  const ageText = activeAgeBtn ? activeAgeBtn.textContent : "";
+  const totalPrice = totalPriceDisplay.textContent;
+
+  // Превращаем технические названия стран в читаемый вид
+  const countryNameRu =
+    currentCountry.name === "china"
+      ? "Китай"
+      : currentCountry.name === "korea"
+        ? "Корея"
+        : "Япония";
+  const volumeText =
+    volume === 0
+      ? "Электро / Гибрид"
+      : `${volume.toLocaleString("ru-RU")} куб. см`;
+
+  // Вызываем нативное всплывающее окно Telegram
+  window.Telegram.WebApp.showPopup(
+    {
+      title: "Проверка спецификации",
+      message:
+        `Вы собираетесь отправить заявку на расчет автомобиля со следующими параметрами:\n\n` +
+        `📍 Страна: ${countryNameRu}\n` +
+        `💰 Цена: ${priceLocal.toLocaleString("ru-RU")} ${currentCountry.symbol}\n` +
+        `🔌 Двигатель: ${volumeText}\n` +
+        `📅 Возраст: ${ageText}\n\n` +
+        `💵 Расчетная стоимость: ${totalPrice}\n\n` +
+        `Всё верно?`,
+      buttons: [
+        { id: "submit", type: "default", text: "Да, отправить заявку" },
+        { id: "cancel", type: "cancel", text: "Отмена" },
+      ],
+    },
+    (buttonId) => {
+      // Если пользователь нажал кнопку подтверждения
+      if (buttonId === "submit") {
+        window.Telegram.WebApp.showAlert(
+          "Заявка успешно сформирована! Менеджер свяжется с вами для уточнения деталей поставки.",
+          () => {
+            // Закрываем Mini App после успешной отправки, возвращая пользователя в чат
+            window.Telegram.WebApp.close();
+          },
+        );
+      }
+    },
+  );
+});
